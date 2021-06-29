@@ -1,0 +1,50 @@
+    1  git clone https://github.com/tensorflow/models
+    2  pip install Cython contextlib2 pillow lxml jupyter matplotlib
+    3  PROTOC_ZIP=protoc-3.4.0-linux-x86_64.zip
+    4  curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.4.0/$PROTOC_ZIP
+    5  sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+    6  sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+    7  rm -f $PROTOC_ZIP
+    8  cd $HOME/usr
+    9  sudo protoc --help
+   10  cd /workspaces/oi-ml/models/research
+   11  ./bin/protoc object_detection/protos/*.proto --python_out=.
+   12  sudo ./bin/protoc object_detection/protos/*.proto --python_out=.
+   13  sudo protoc object_detection/protos/*.proto --python_out=.
+   14  python object_detection/builders/model_builder_tf1_test.py
+   15  python object_detection/builders/model_builder_tf2_test.py
+   16  pip install absl
+   17  pip install absl-py
+   18  python object_detection/builders/model_builder_tf2_test.py
+   19  pip install six
+   20  python object_detection/builders/model_builder_tf2_test.py
+   21  pip install python-six
+   22  pip install six
+   23  python object_detection/builders/model_builder_tf2_test.py
+   24  pip install --ignore-installed six
+   25  python object_detection/builders/model_builder_tf2_test.py
+   26  pip install tensorflow
+   27  python object_detection/builders/model_builder_tf2_test.py
+   28  pip install object_detection
+   29  python object_detection/builders/model_builder_tf2_test.py
+   30  python object_detection/builders/model_builder_tf2_test.py
+   31   export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
+   32  python object_detection/builders/model_builder_tf2_test.py
+   33  pip install tf_slim
+   34  python object_detection/builders/model_builder_tf2_test.py
+   35  pip install scipy
+   36  pip install scipy
+   37  python object_detection/builders/model_builder_tf2_test.py
+   38  pip install official
+   39  pip install tf-models-official
+   40  python object_detection/builders/model_builder_tf2_test.py
+   41  pip install yaml
+   42  pip install pyyaml
+   43  python object_detection/builders/model_builder_tf2_test.py
+   44  ModuleNotFoundError: No module named 'yaml'
+   45  pip install pyyaml
+   46  python object_detection/builders/model_builder_tf2_test.py
+   47  sudo easy_install pip
+   48  sudo python -m pip install pyyaml
+   49  python object_detection/builders/model_builder_tf2_test.py
+   50  history > /workspaces/oi-ml/history.txt
