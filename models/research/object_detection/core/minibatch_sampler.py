@@ -36,7 +36,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 
 import six
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from object_detection.utils import ops
 

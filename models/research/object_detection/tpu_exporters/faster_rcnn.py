@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 # pylint: disable=protected-access
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 # pylint: disable=g-import-not-at-top
 # Checking TF version, because this module relies on TPUPartitionedCall
@@ -31,8 +31,6 @@ if int(major) < 1 or (int(major == 1) and int(minor) < 14):
 
 from tensorflow.python.framework import function
 from tensorflow.python.tpu import functional as tpu_functional
-from tensorflow.python.tpu import tpu
-from tensorflow.python.tpu.bfloat16 import bfloat16_scope
 from tensorflow.python.tpu.ops import tpu_ops
 from object_detection import exporter
 from object_detection.builders import model_builder
@@ -99,12 +97,7 @@ def get_prediction_tensor_shapes(pipeline_config):
   prediction_dict = detection_model.predict(preprocessed_inputs,
                                             true_image_shapes)
 
-  shapes_info = {}
-  for k, v in prediction_dict.items():
-    if isinstance(v, list):
-      shapes_info[k] = [item.shape.as_list() for item in v]
-    else:
-      shapes_info[k] = v.shape.as_list()
+  shapes_info = {k: v.shape.as_list() for k, v in prediction_dict.items()}
   return shapes_info
 
 
@@ -171,12 +164,12 @@ def build_graph(pipeline_config,
   @function.Defun(capture_resource_var_by_value=False)
   def tpu_subgraph_predict():
     if use_bfloat16:
-      with bfloat16_scope():
-        return tpu.rewrite(tpu_subgraph_predict_fn,
-                           [preprocessed_inputs, true_image_shapes])
+      with tf.contrib.tpu.bfloat16_scope():
+        return tf.contrib.tpu.rewrite(tpu_subgraph_predict_fn,
+                                      [preprocessed_inputs, true_image_shapes])
     else:
-      return tpu.rewrite(tpu_subgraph_predict_fn,
-                         [preprocessed_inputs, true_image_shapes])
+      return tf.contrib.tpu.rewrite(tpu_subgraph_predict_fn,
+                                    [preprocessed_inputs, true_image_shapes])
 
   (rpn_box_encodings, rpn_objectness_predictions_with_background, anchors,
    refined_box_encodings, class_predictions_with_background, num_proposals,
@@ -207,12 +200,7 @@ def build_graph(pipeline_config,
   }
 
   for k in prediction_dict:
-    if isinstance(prediction_dict[k], list):
-      prediction_dict[k] = [
-          prediction_dict[k][idx].set_shape(shapes_info[k][idx])
-          for idx in len(prediction_dict[k])]
-    else:
-      prediction_dict[k].set_shape(shapes_info[k])
+    prediction_dict[k].set_shape(shapes_info[k])
 
   if use_bfloat16:
     prediction_dict = utils.bfloat16_to_float32_nested(prediction_dict)

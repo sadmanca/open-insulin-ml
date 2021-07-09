@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,15 +32,12 @@ oid_hierarchical_labels_expansion.py \
 --annotation_type=<1 (for boxes and segments) or 2 (for image-level labels)>
 """
 
-from __future__ import absolute_import
-from __future__ import division
 from __future__ import print_function
 
 import copy
 import json
 from absl import app
 from absl import flags
-import six
 
 flags.DEFINE_string(
     'json_hierarchy_file', None,
@@ -140,7 +136,7 @@ class OIDHierarchicalLabelsExpansion(object):
     # Row header is expected to be the following for segments:
     # ImageID,LabelName,ImageWidth,ImageHeight,XMin,XMax,YMin,YMax,
     # IsGroupOf,Mask
-    split_csv_row = six.ensure_str(csv_row).split(',')
+    split_csv_row = csv_row.split(',')
     result = [csv_row]
     assert split_csv_row[
         labelname_column_index] in self._hierarchy_keyed_child
@@ -169,7 +165,7 @@ class OIDHierarchicalLabelsExpansion(object):
     """
     # Row header is expected to be exactly:
     # ImageID,Source,LabelName,Confidence
-    split_csv_row = six.ensure_str(csv_row).split(',')
+    split_csv_row = csv_row.split(',')
     result = [csv_row]
     if int(split_csv_row[confidence_column_index]) == 1:
       assert split_csv_row[

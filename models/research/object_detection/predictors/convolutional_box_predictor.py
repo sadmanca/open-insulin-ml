@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,17 +14,13 @@
 # ==============================================================================
 
 """Convolutional Box Predictors with and without weight sharing."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 import functools
-from six.moves import range
-from six.moves import zip
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
+import tensorflow as tf
 from object_detection.core import box_predictor
 from object_detection.utils import shape_utils
 from object_detection.utils import static_shape
+
+slim = tf.contrib.slim
 
 BOX_ENCODINGS = box_predictor.BOX_ENCODINGS
 CLASS_PREDICTIONS_WITH_BACKGROUND = (

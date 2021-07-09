@@ -15,7 +15,7 @@
 
 """Bipartite matcher implementation."""
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tensorflow.contrib.image.python.ops import image_ops
 from object_detection.core import matcher

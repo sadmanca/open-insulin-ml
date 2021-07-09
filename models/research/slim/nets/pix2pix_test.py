@@ -18,8 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
+import tensorflow as tf
 from nets import pix2pix
 
 
@@ -36,7 +35,7 @@ class GeneratorTest(tf.test.TestCase):
     num_outputs = 4
 
     images = tf.ones((batch_size, height, width, 3))
-    with slim.arg_scope(pix2pix.pix2pix_arg_scope()):
+    with tf.contrib.framework.arg_scope(pix2pix.pix2pix_arg_scope()):
       logits, _ = pix2pix.pix2pix_generator(
           images, num_outputs, blocks=self._reduced_default_blocks(),
           upsample_method='nn_upsample_conv')
@@ -53,7 +52,7 @@ class GeneratorTest(tf.test.TestCase):
     num_outputs = 4
 
     images = tf.ones((batch_size, height, width, 3))
-    with slim.arg_scope(pix2pix.pix2pix_arg_scope()):
+    with tf.contrib.framework.arg_scope(pix2pix.pix2pix_arg_scope()):
       logits, _ = pix2pix.pix2pix_generator(
           images, num_outputs, blocks=self._reduced_default_blocks(),
           upsample_method='conv2d_transpose')
@@ -74,7 +73,7 @@ class GeneratorTest(tf.test.TestCase):
         pix2pix.Block(64, 0.5),
         pix2pix.Block(128, 0),
     ]
-    with slim.arg_scope(pix2pix.pix2pix_arg_scope()):
+    with tf.contrib.framework.arg_scope(pix2pix.pix2pix_arg_scope()):
       _, end_points = pix2pix.pix2pix_generator(
           images, num_outputs, blocks)
 
@@ -106,7 +105,7 @@ class DiscriminatorTest(tf.test.TestCase):
     output_size = self._layer_output_size(output_size, stride=1)
 
     images = tf.ones((batch_size, input_size, input_size, 3))
-    with slim.arg_scope(pix2pix.pix2pix_arg_scope()):
+    with tf.contrib.framework.arg_scope(pix2pix.pix2pix_arg_scope()):
       logits, end_points = pix2pix.pix2pix_discriminator(
           images, num_filters=[64, 128, 256, 512])
     self.assertListEqual([batch_size, output_size, output_size, 1],
@@ -125,7 +124,7 @@ class DiscriminatorTest(tf.test.TestCase):
     output_size = self._layer_output_size(output_size, stride=1, pad=0)
 
     images = tf.ones((batch_size, input_size, input_size, 3))
-    with slim.arg_scope(pix2pix.pix2pix_arg_scope()):
+    with tf.contrib.framework.arg_scope(pix2pix.pix2pix_arg_scope()):
       logits, end_points = pix2pix.pix2pix_discriminator(
           images, num_filters=[64, 128, 256, 512], padding=0)
     self.assertListEqual([batch_size, output_size, output_size, 1],
@@ -138,7 +137,7 @@ class DiscriminatorTest(tf.test.TestCase):
     input_size = 256
 
     images = tf.ones((batch_size, input_size, input_size, 3))
-    with slim.arg_scope(pix2pix.pix2pix_arg_scope()):
+    with tf.contrib.framework.arg_scope(pix2pix.pix2pix_arg_scope()):
       with self.assertRaises(TypeError):
         pix2pix.pix2pix_discriminator(
             images, num_filters=[64, 128, 256, 512], padding=1.5)
@@ -148,7 +147,7 @@ class DiscriminatorTest(tf.test.TestCase):
     input_size = 256
 
     images = tf.ones((batch_size, input_size, input_size, 3))
-    with slim.arg_scope(pix2pix.pix2pix_arg_scope()):
+    with tf.contrib.framework.arg_scope(pix2pix.pix2pix_arg_scope()):
       with self.assertRaises(ValueError):
         pix2pix.pix2pix_discriminator(
             images, num_filters=[64, 128, 256, 512], padding=-1)

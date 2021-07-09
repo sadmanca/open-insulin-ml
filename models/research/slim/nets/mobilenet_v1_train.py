@@ -18,14 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
-
-from tensorflow.contrib import quantize as contrib_quantize
+import tensorflow as tf
 
 from datasets import dataset_factory
 from nets import mobilenet_v1
 from preprocessing import preprocessing_factory
+
+slim = tf.contrib.slim
 
 flags = tf.app.flags
 
@@ -103,10 +102,11 @@ def imagenet_input(is_training):
 
   image = image_preprocessing_fn(image, FLAGS.image_size, FLAGS.image_size)
 
-  images, labels = tf.train.batch([image, label],
-                                  batch_size=FLAGS.batch_size,
-                                  num_threads=4,
-                                  capacity=5 * FLAGS.batch_size)
+  images, labels = tf.train.batch(
+      [image, label],
+      batch_size=FLAGS.batch_size,
+      num_threads=4,
+      capacity=5 * FLAGS.batch_size)
   labels = slim.one_hot_encoding(labels, FLAGS.num_classes)
   return images, labels
 
@@ -136,7 +136,7 @@ def build_model():
     # quant_delay delays start of quantization till quant_delay steps, allowing
     # for better model accuracy.
     if FLAGS.quantize:
-      contrib_quantize.create_training_graph(quant_delay=get_quant_delay())
+      tf.contrib.quantize.create_training_graph(quant_delay=get_quant_delay())
 
     total_loss = tf.losses.get_total_loss(name='total_loss')
     # Configure the learning rate using an exponential decay.
@@ -165,8 +165,7 @@ def get_checkpoint_init_fn():
   """Returns the checkpoint init_fn if the checkpoint is provided."""
   if FLAGS.fine_tune_checkpoint:
     variables_to_restore = slim.get_variables_to_restore()
-    global_step_reset = tf.assign(
-        tf.train.get_or_create_global_step(), 0)
+    global_step_reset = tf.assign(tf.train.get_or_create_global_step(), 0)
     # When restoring from a floating point model, the min/max values for
     # quantized weights and activations are not present.
     # We instruct slim to ignore variables that are missing during restoration

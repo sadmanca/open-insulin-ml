@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,13 +15,15 @@
 
 """SSDFeatureExtractor for Keras MobilenetV1 features."""
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
 from object_detection.models.keras_models import mobilenet_v1
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
+
+slim = tf.contrib.slim
 
 
 class SSDMobileNetV1KerasFeatureExtractor(
@@ -93,7 +94,7 @@ class SSDMobileNetV1KerasFeatureExtractor(
         'use_explicit_padding': self._use_explicit_padding,
         'use_depthwise': self._use_depthwise,
     }
-    self.classification_backbone = None
+    self._mobilenet_v1 = None
     self._feature_map_generator = None
 
   def build(self, input_shape):
@@ -111,7 +112,7 @@ class SSDMobileNetV1KerasFeatureExtractor(
         name='conv_pw_11_relu').output
     conv2d_13_pointwise = full_mobilenet_v1.get_layer(
         name='conv_pw_13_relu').output
-    self.classification_backbone = tf.keras.Model(
+    self._mobilenet_v1 = tf.keras.Model(
         inputs=full_mobilenet_v1.inputs,
         outputs=[conv2d_11_pointwise, conv2d_13_pointwise])
     self._feature_map_generator = (
@@ -155,11 +156,11 @@ class SSDMobileNetV1KerasFeatureExtractor(
     preprocessed_inputs = shape_utils.check_min_image_dim(
         33, preprocessed_inputs)
 
-    image_features = self.classification_backbone(
+    image_features = self._mobilenet_v1(
         ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple))
 
     feature_maps = self._feature_map_generator({
         'Conv2d_11_pointwise': image_features[0],
         'Conv2d_13_pointwise': image_features[1]})
 
-    return list(feature_maps.values())
+    return feature_maps.values()

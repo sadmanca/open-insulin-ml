@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import os
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from object_detection.utils import category_util
 

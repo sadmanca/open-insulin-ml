@@ -20,10 +20,11 @@ All the box prediction heads have a predict function that receives the
 `features` as the first argument and returns `box_encodings`.
 """
 import functools
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
+import tensorflow as tf
 
 from object_detection.predictors.heads import head
+
+slim = tf.contrib.slim
 
 
 class MaskRCNNBoxHead(head.Head):
@@ -105,7 +106,6 @@ class MaskRCNNBoxHead(head.Head):
       box_encodings = slim.fully_connected(
           flattened_roi_pooled_features,
           number_of_boxes * self._box_code_size,
-          reuse=tf.AUTO_REUSE,
           activation_fn=None,
           scope='BoxEncodingPredictor')
     box_encodings = tf.reshape(box_encodings,
@@ -137,11 +137,7 @@ class ConvolutionalBoxHead(head.Head):
 
     Raises:
       ValueError: if min_depth > max_depth.
-      ValueError: if use_depthwise is True and kernel_size is 1.
     """
-    if use_depthwise and (kernel_size == 1):
-      raise ValueError('Should not use 1x1 kernel when using depthwise conv')
-
     super(ConvolutionalBoxHead, self).__init__()
     self._is_training = is_training
     self._box_code_size = box_code_size
@@ -225,13 +221,7 @@ class WeightSharedConvolutionalBoxHead(head.Head):
         box_coder]. Otherwise returns the prediction tensor before reshaping,
         whose shape is [batch, height, width, num_predictions_per_location *
         num_class_slots].
-
-    Raises:
-      ValueError: if use_depthwise is True and kernel_size is 1.
     """
-    if use_depthwise and (kernel_size == 1):
-      raise ValueError('Should not use 1x1 kernel when using depthwise conv')
-
     super(WeightSharedConvolutionalBoxHead, self).__init__()
     self._box_code_size = box_code_size
     self._kernel_size = kernel_size

@@ -1,8 +1,6 @@
 # Exporting a trained model for inference
 
-[![TensorFlow 1.15](https://img.shields.io/badge/TensorFlow-1.15-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
-
-After your model has been trained, you should export it to a TensorFlow
+After your model has been trained, you should export it to a Tensorflow
 graph proto. A checkpoint will typically consist of three files:
 
 * model.ckpt-${CHECKPOINT_NUMBER}.data-00000-of-00001

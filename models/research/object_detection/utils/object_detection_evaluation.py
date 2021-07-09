@@ -40,7 +40,7 @@ import numpy as np
 import six
 from six.moves import range
 from six.moves import zip
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from object_detection.core import standard_fields
 from object_detection.utils import label_map_util
@@ -159,9 +159,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
                metric_prefix=None,
                use_weighted_mean_ap=False,
                evaluate_masks=False,
-               group_of_weight=0.0,
-               nms_iou_threshold=1.0,
-               nms_max_output_boxes=10000):
+               group_of_weight=0.0):
     """Constructor.
 
     Args:
@@ -189,8 +187,6 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         matching_iou_threshold, weight group_of_weight is added to true
         positives. Consequently, if no detection falls within a group-of box,
         weight group_of_weight is added to false negatives.
-      nms_iou_threshold: NMS IoU threashold.
-      nms_max_output_boxes: maximal number of boxes after NMS.
 
     Raises:
       ValueError: If the category ids are not 1-indexed.
@@ -206,8 +202,6 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     self._label_id_offset = 1
     self._evaluate_masks = evaluate_masks
     self._group_of_weight = group_of_weight
-    self._nms_iou_threshold = nms_iou_threshold
-    self._nms_max_output_boxes = nms_max_output_boxes
     self._evaluation = ObjectDetectionEvaluation(
         num_groundtruth_classes=self._num_classes,
         matching_iou_threshold=self._matching_iou_threshold,
@@ -215,9 +209,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         recall_upper_bound=self._recall_upper_bound,
         use_weighted_mean_ap=self._use_weighted_mean_ap,
         label_id_offset=self._label_id_offset,
-        group_of_weight=self._group_of_weight,
-        nms_iou_threshold=self._nms_iou_threshold,
-        nms_max_output_boxes=self._nms_max_output_boxes)
+        group_of_weight=self._group_of_weight)
     self._image_ids = set([])
     self._evaluate_corlocs = evaluate_corlocs
     self._evaluate_precision_recall = evaluate_precision_recall
@@ -234,29 +226,6 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         standard_fields.DetectionResultFields.detection_masks
     ])
     self._build_metric_names()
-
-  def get_internal_state(self):
-    """Returns internal state and image ids that lead to the state.
-
-    Note that only evaluation results will be returned (e.g. not raw predictions
-    or groundtruth.
-    """
-    return self._evaluation.get_internal_state(), self._image_ids
-
-  def merge_internal_state(self, image_ids, state_tuple):
-    """Merges internal state with the existing state of evaluation.
-
-    If image_id is already seen by evaluator, an error will be thrown.
-
-    Args:
-      image_ids: list of images whose state is stored in the tuple.
-      state_tuple: state.
-    """
-    for image_id in image_ids:
-      if image_id in self._image_ids:
-        logging.warning('Image with id %s already added.', image_id)
-
-    self._evaluation.merge_internal_state(state_tuple)
 
   def _build_metric_names(self):
     """Builds a list with metric names."""
@@ -321,7 +290,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         raise error if instance masks are not in groundtruth dictionary.
     """
     if image_id in self._image_ids:
-      logging.warning('Image with id %s already added.', image_id)
+      raise ValueError('Image with id {} already added.'.format(image_id))
 
     groundtruth_classes = (
         groundtruth_dict[standard_fields.InputDataFields.groundtruth_classes] -
@@ -462,29 +431,24 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         num_groundtruth_classes=self._num_classes,
         matching_iou_threshold=self._matching_iou_threshold,
         use_weighted_mean_ap=self._use_weighted_mean_ap,
-        label_id_offset=self._label_id_offset,
-        nms_iou_threshold=self._nms_iou_threshold,
-        nms_max_output_boxes=self._nms_max_output_boxes,
-    )
+        label_id_offset=self._label_id_offset)
     self._image_ids.clear()
 
-  def add_eval_dict(self, eval_dict):
-    """Observes an evaluation result dict for a single example.
+  def get_estimator_eval_metric_ops(self, eval_dict):
+    """Returns dict of metrics to use with `tf.estimator.EstimatorSpec`.
 
-    When executing eagerly, once all observations have been observed by this
-    method you can use `.evaluate()` to get the final metrics.
-
-    When using `tf.estimator.Estimator` for evaluation this function is used by
-    `get_estimator_eval_metric_ops()` to construct the metric update op.
+    Note that this must only be implemented if performing evaluation with a
+    `tf.estimator.Estimator`.
 
     Args:
       eval_dict: A dictionary that holds tensors for evaluating an object
         detection model, returned from
-        eval_util.result_dict_for_single_example().
+        eval_util.result_dict_for_single_example(). It must contain
+        standard_fields.InputDataFields.key.
 
     Returns:
-      None when executing eagerly, or an update_op that can be used to update
-      the eval metrics in `tf.estimator.EstimatorSpec`.
+      A dictionary of metric names to tuple of value_op and update_op that can
+      be used as eval metric ops in `tf.estimator.EstimatorSpec`.
     """
     # remove unexpected fields
     eval_dict_filtered = dict()
@@ -515,25 +479,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
 
     args = [eval_dict_filtered[standard_fields.InputDataFields.key]]
     args.extend(six.itervalues(eval_dict_filtered))
-    return tf.py_func(update_op, args, [])
-
-  def get_estimator_eval_metric_ops(self, eval_dict):
-    """Returns dict of metrics to use with `tf.estimator.EstimatorSpec`.
-
-    Note that this must only be implemented if performing evaluation with a
-    `tf.estimator.Estimator`.
-
-    Args:
-      eval_dict: A dictionary that holds tensors for evaluating an object
-        detection model, returned from
-        eval_util.result_dict_for_single_example(). It must contain
-        standard_fields.InputDataFields.key.
-
-    Returns:
-      A dictionary of metric names to tuple of value_op and update_op that can
-      be used as eval metric ops in `tf.estimator.EstimatorSpec`.
-    """
-    update_op = self.add_eval_dict(eval_dict)
+    update_op = tf.py_func(update_op, args, [])
 
     def first_value_func():
       self._metrics = self.evaluate()
@@ -560,19 +506,13 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
 class PascalDetectionEvaluator(ObjectDetectionEvaluator):
   """A class to evaluate detections using PASCAL metrics."""
 
-  def __init__(self,
-               categories,
-               matching_iou_threshold=0.5,
-               nms_iou_threshold=1.0,
-               nms_max_output_boxes=10000):
+  def __init__(self, categories, matching_iou_threshold=0.5):
     super(PascalDetectionEvaluator, self).__init__(
         categories,
         matching_iou_threshold=matching_iou_threshold,
         evaluate_corlocs=False,
         metric_prefix='PascalBoxes',
-        use_weighted_mean_ap=False,
-        nms_iou_threshold=nms_iou_threshold,
-        nms_max_output_boxes=nms_max_output_boxes)
+        use_weighted_mean_ap=False)
 
 
 class WeightedPascalDetectionEvaluator(ObjectDetectionEvaluator):
@@ -729,7 +669,7 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
       ValueError: On adding groundtruth for an image more than once.
     """
     if image_id in self._image_ids:
-      logging.warning('Image with id %s already added.', image_id)
+      raise ValueError('Image with id {} already added.'.format(image_id))
 
     groundtruth_classes = (
         groundtruth_dict[standard_fields.InputDataFields.groundtruth_classes] -
@@ -832,11 +772,8 @@ class OpenImagesChallengeEvaluator(OpenImagesDetectionEvaluator):
         metric_prefix=metrics_prefix)
 
     self._evaluatable_labels = {}
-    # Only one of the two has to be provided, but both options are given
-    # for compatibility with previous codebase.
-    self._expected_keys.update([
-        standard_fields.InputDataFields.groundtruth_image_classes,
-        standard_fields.InputDataFields.groundtruth_labeled_classes])
+    self._expected_keys.add(
+        standard_fields.InputDataFields.groundtruth_image_classes)
 
   def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
     """Adds groundtruth for a single image to be used for evaluation.
@@ -861,18 +798,14 @@ class OpenImagesChallengeEvaluator(OpenImagesDetectionEvaluator):
     """
     super(OpenImagesChallengeEvaluator,
           self).add_single_ground_truth_image_info(image_id, groundtruth_dict)
-    input_fields = standard_fields.InputDataFields
     groundtruth_classes = (
-        groundtruth_dict[input_fields.groundtruth_classes] -
+        groundtruth_dict[standard_fields.InputDataFields.groundtruth_classes] -
         self._label_id_offset)
-    image_classes = np.array([], dtype=int)
-    if input_fields.groundtruth_image_classes in groundtruth_dict:
-      image_classes = groundtruth_dict[input_fields.groundtruth_image_classes]
-    elif input_fields.groundtruth_labeled_classes in groundtruth_dict:
-      image_classes = groundtruth_dict[input_fields.groundtruth_labeled_classes]
-    image_classes -= self._label_id_offset
     self._evaluatable_labels[image_id] = np.unique(
-        np.concatenate((image_classes, groundtruth_classes)))
+        np.concatenate(((groundtruth_dict.get(
+            standard_fields.InputDataFields.groundtruth_image_classes,
+            np.array([], dtype=int)) - self._label_id_offset),
+                        groundtruth_classes)))
 
   def add_single_detected_image_info(self, image_id, detections_dict):
     """Adds detections for a single image to be used for evaluation.
@@ -986,16 +919,6 @@ class OpenImagesInstanceSegmentationChallengeEvaluator(
         group_of_weight=0.0)
 
 
-ObjectDetectionEvaluationState = collections.namedtuple(
-    'ObjectDetectionEvaluationState', [
-        'num_gt_instances_per_class',
-        'scores_per_class',
-        'tp_fp_labels_per_class',
-        'num_gt_imgs_per_class',
-        'num_images_correctly_detected_per_class',
-    ])
-
-
 class ObjectDetectionEvaluation(object):
   """Internal implementation of Pascal object detection metrics."""
 
@@ -1073,46 +996,11 @@ class ObjectDetectionEvaluation(object):
     self.average_precision_per_class.fill(np.nan)
     self.precisions_per_class = [np.nan] * self.num_class
     self.recalls_per_class = [np.nan] * self.num_class
-    self.sum_tp_class = [np.nan] * self.num_class
 
     self.corloc_per_class = np.ones(self.num_class, dtype=float)
 
   def clear_detections(self):
     self._initialize_detections()
-
-  def get_internal_state(self):
-    """Returns internal state of the evaluation.
-
-    NOTE: that only evaluation results will be returned
-    (e.g. no raw predictions or groundtruth).
-    Returns:
-      internal state of the evaluation.
-    """
-    return ObjectDetectionEvaluationState(
-        self.num_gt_instances_per_class, self.scores_per_class,
-        self.tp_fp_labels_per_class, self.num_gt_imgs_per_class,
-        self.num_images_correctly_detected_per_class)
-
-  def merge_internal_state(self, state_tuple):
-    """Merges internal state of the evaluation with the current state.
-
-    Args:
-      state_tuple: state tuple representing evaluation state: should be of type
-        ObjectDetectionEvaluationState.
-    """
-    (num_gt_instances_per_class, scores_per_class, tp_fp_labels_per_class,
-     num_gt_imgs_per_class, num_images_correctly_detected_per_class) = (
-         state_tuple)
-    assert self.num_class == len(num_gt_instances_per_class)
-    assert self.num_class == len(scores_per_class)
-    assert self.num_class == len(tp_fp_labels_per_class)
-    for i in range(self.num_class):
-      self.scores_per_class[i].extend(scores_per_class[i])
-      self.tp_fp_labels_per_class[i].extend(tp_fp_labels_per_class[i])
-      self.num_gt_instances_per_class[i] += num_gt_instances_per_class[i]
-      self.num_gt_imgs_per_class[i] += num_gt_imgs_per_class[i]
-      self.num_images_correctly_detected_per_class[
-          i] += num_images_correctly_detected_per_class[i]
 
   def add_single_ground_truth_image_info(self,
                                          image_key,
@@ -1274,9 +1162,9 @@ class ObjectDetectionEvaluation(object):
           ~groundtruth_is_difficult_list
           & ~groundtruth_is_group_of_list] == class_index)
       num_groupof_gt_instances = self.group_of_weight * np.sum(
-          groundtruth_class_labels[
-              groundtruth_is_group_of_list
-              & ~groundtruth_is_difficult_list] == class_index)
+          groundtruth_class_labels[groundtruth_is_group_of_list
+                                   & ~groundtruth_is_difficult_list] ==
+          class_index)
       self.num_gt_instances_per_class[
           class_index] += num_gt_instances + num_groupof_gt_instances
       if np.any(groundtruth_class_labels == class_index):
@@ -1328,7 +1216,6 @@ class ObjectDetectionEvaluation(object):
 
       self.precisions_per_class[class_index] = precision_within_bound
       self.recalls_per_class[class_index] = recall_within_bound
-      self.sum_tp_class[class_index] = tp_fp_labels.sum()
       average_precision = metrics.compute_average_precision(
           precision_within_bound, recall_within_bound)
       self.average_precision_per_class[class_index] = average_precision

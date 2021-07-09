@@ -16,7 +16,7 @@
 """Builder function for post processing operations."""
 import functools
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from object_detection.builders import calibration_builder
 from object_detection.core import post_processing
 from object_detection.protos import post_processing_pb2
@@ -89,7 +89,8 @@ def _build_non_max_suppressor(nms_config):
   if nms_config.soft_nms_sigma < 0.0:
     raise ValueError('soft_nms_sigma should be non-negative.')
   if nms_config.use_combined_nms and nms_config.use_class_agnostic_nms:
-    raise ValueError('combined_nms does not support class_agnostic_nms.')
+      raise ValueError('combined_nms does not support class_agnostic_nms')
+
   non_max_suppressor_fn = functools.partial(
       post_processing.batch_multiclass_non_max_suppression,
       score_thresh=nms_config.score_threshold,
@@ -100,19 +101,14 @@ def _build_non_max_suppressor(nms_config):
       use_class_agnostic_nms=nms_config.use_class_agnostic_nms,
       max_classes_per_detection=nms_config.max_classes_per_detection,
       soft_nms_sigma=nms_config.soft_nms_sigma,
-      use_partitioned_nms=nms_config.use_partitioned_nms,
-      use_combined_nms=nms_config.use_combined_nms,
-      change_coordinate_frame=nms_config.change_coordinate_frame,
-      use_hard_nms=nms_config.use_hard_nms,
-      use_cpu_nms=nms_config.use_cpu_nms)
-
+      use_combined_nms=nms_config.use_combined_nms)
   return non_max_suppressor_fn
 
 
 def _score_converter_fn_with_logit_scale(tf_score_converter_fn, logit_scale):
   """Create a function to scale logits then apply a Tensorflow function."""
   def score_converter_fn(logits):
-    scaled_logits = tf.multiply(logits, 1.0 / logit_scale, name='scale_logits')
+    scaled_logits = tf.divide(logits, logit_scale, name='scale_logits')
     return tf_score_converter_fn(scaled_logits, name='convert_scores')
   score_converter_fn.__name__ = '%s_with_logit_scale' % (
       tf_score_converter_fn.__name__)
@@ -147,12 +143,8 @@ def _build_score_converter(score_converter_config, logit_scale):
 def _build_calibrated_score_converter(score_converter_fn, calibration_config):
   """Wraps a score_converter_fn, adding a calibration step.
 
-  Builds a score converter function with a calibration transformation according
-  to calibration_builder.py. The score conversion function may be applied before
-  or after the calibration transformation, depending on the calibration method.
-  If the method is temperature scaling, the score conversion is
-  after the calibration transformation. Otherwise, the score conversion is
-  before the calibration transformation. Calibration applies positive monotonic
+  Builds a score converter function witha calibration transformation according
+  to calibration_builder.py. Calibration applies positive monotonic
   transformations to inputs (i.e. score ordering is strictly preserved or
   adjacent scores are mapped to the same score). When calibration is
   class-agnostic, the highest-scoring class remains unchanged, unless two
@@ -170,14 +162,8 @@ def _build_calibrated_score_converter(score_converter_fn, calibration_config):
   """
   calibration_fn = calibration_builder.build(calibration_config)
   def calibrated_score_converter_fn(logits):
-    if (calibration_config.WhichOneof('calibrator') ==
-        'temperature_scaling_calibration'):
-      calibrated_logits = calibration_fn(logits)
-      return score_converter_fn(calibrated_logits)
-    else:
-      converted_logits = score_converter_fn(logits)
-      return calibration_fn(converted_logits)
-
+    converted_logits = score_converter_fn(logits)
+    return calibration_fn(converted_logits)
   calibrated_score_converter_fn.__name__ = (
       'calibrate_with_%s' % calibration_config.WhichOneof('calibrator'))
   return calibrated_score_converter_fn

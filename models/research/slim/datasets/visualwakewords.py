@@ -28,17 +28,18 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
+import tensorflow as tf
 
 from datasets import dataset_utils
 
+
+slim = tf.contrib.slim
 
 _FILE_PATTERN = '%s.record-*'
 
 _SPLITS_TO_SIZES = {
     'train': 82783,
-    'val': 40504,
+    'validation': 40504,
 }
 
 
@@ -46,6 +47,7 @@ _ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying height and width.',
     'label': 'The label id of the image, an integer in {0, 1}',
     'object/bbox': 'A list of bounding boxes.',
+    'object/label': 'A list of labels, all objects belong to the same class.',
 }
 
 _NUM_CLASSES = 2
@@ -97,6 +99,8 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
           tf.VarLenFeature(dtype=tf.float32),
       'image/object/bbox/ymax':
           tf.VarLenFeature(dtype=tf.float32),
+      'image/object/class/label':
+          tf.VarLenFeature(dtype=tf.int64),
   }
 
   items_to_handlers = {
@@ -107,6 +111,8 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       'object/bbox':
           slim.tfexample_decoder.BoundingBox(['ymin', 'xmin', 'ymax', 'xmax'],
                                              'image/object/bbox/'),
+      'object/label':
+          slim.tfexample_decoder.Tensor('image/object/class/label'),
   }
 
   decoder = slim.tfexample_decoder.TFExampleDecoder(keys_to_features,

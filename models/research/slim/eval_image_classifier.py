@@ -19,14 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
-
-from tensorflow.contrib import quantize as contrib_quantize
+import tensorflow as tf
 
 from datasets import dataset_factory
 from nets import nets_factory
 from preprocessing import preprocessing_factory
+
+slim = tf.contrib.slim
 
 tf.app.flags.DEFINE_integer(
     'batch_size', 100, 'The number of samples in each batch.')
@@ -83,9 +82,6 @@ tf.app.flags.DEFINE_integer(
 tf.app.flags.DEFINE_bool(
     'quantize', False, 'whether to use quantized graph or not.')
 
-tf.app.flags.DEFINE_bool('use_grayscale', False,
-                         'Whether to convert input images to grayscale.')
-
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -128,8 +124,7 @@ def main(_):
     preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
     image_preprocessing_fn = preprocessing_factory.get_preprocessing(
         preprocessing_name,
-        is_training=False,
-        use_grayscale=FLAGS.use_grayscale)
+        is_training=False)
 
     eval_image_size = FLAGS.eval_image_size or network_fn.default_image_size
 
@@ -147,7 +142,7 @@ def main(_):
     logits, _ = network_fn(images)
 
     if FLAGS.quantize:
-      contrib_quantize.create_eval_graph()
+      tf.contrib.quantize.create_eval_graph()
 
     if FLAGS.moving_average_decay:
       variable_averages = tf.train.ExponentialMovingAverage(

@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from nets import cyclegan
 
@@ -77,7 +77,8 @@ class CycleganTest(tf.test.TestCase):
 
   def _error_if_height_not_multiple_of_four_helper(self, height):
     self.assertRaisesRegexp(
-        ValueError, 'The input height must be a multiple of 4.',
+        ValueError,
+        'The input height must be a multiple of 4.',
         cyclegan.cyclegan_generator_resnet,
         tf.placeholder(tf.float32, shape=[None, height, 32, 3]))
 
@@ -92,7 +93,8 @@ class CycleganTest(tf.test.TestCase):
 
   def _error_if_width_not_multiple_of_four_helper(self, width):
     self.assertRaisesRegexp(
-        ValueError, 'The input width must be a multiple of 4.',
+        ValueError,
+        'The input width must be a multiple of 4.',
         cyclegan.cyclegan_generator_resnet,
         tf.placeholder(tf.float32, shape=[None, 32, width, 3]))
 

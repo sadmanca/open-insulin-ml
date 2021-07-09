@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 from six.moves import zip
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from object_detection.utils import static_shape
 
@@ -69,18 +69,17 @@ def pad_tensor(t, length):
       is an integer, the first dimension of padded_t is set to length
       statically.
   """
-
-  # Computing the padding statically makes the operation work with XLA.
-  rank = len(t.get_shape())
-  paddings = [[0 for _ in range(2)] for _ in range(rank)]
-  t_d0 = tf.shape(t)[0]
-
-  if isinstance(length, int) or len(length.get_shape()) == 0:  # pylint:disable=g-explicit-length-test
-    paddings[0][1] = length - t_d0
-  else:
-    paddings[0][1] = length[0] - t_d0
-
-  return tf.pad(t, paddings)
+  t_rank = tf.rank(t)
+  t_shape = tf.shape(t)
+  t_d0 = t_shape[0]
+  pad_d0 = tf.expand_dims(length - t_d0, 0)
+  pad_shape = tf.cond(
+      tf.greater(t_rank, 1), lambda: tf.concat([pad_d0, t_shape[1:]], 0),
+      lambda: tf.expand_dims(length - t_d0, 0))
+  padded_t = tf.concat([t, tf.zeros(pad_shape, dtype=t.dtype)], 0)
+  if not _is_tensor(length):
+    padded_t = _set_dim_0(padded_t, length)
+  return padded_t
 
 
 def clip_tensor(t, length):
@@ -384,7 +383,7 @@ def flatten_dimensions(inputs, first, last):
 
   Example:
   `inputs` is a tensor with initial shape [10, 5, 20, 20, 3].
-  new_tensor = flatten_dimensions(inputs, first=1, last=3)
+  new_tensor = flatten_dimensions(inputs, last=4, first=2)
   new_tensor.shape -> [10, 100, 20, 3].
 
   Args:
@@ -466,34 +465,3 @@ def expand_first_dimension(inputs, dims):
     inputs_reshaped = tf.reshape(inputs, expanded_shape)
 
   return inputs_reshaped
-
-
-def resize_images_and_return_shapes(inputs, image_resizer_fn):
-  """Resizes images using the given function and returns their true shapes.
-
-  Args:
-    inputs: a float32 Tensor representing a batch of inputs of shape
-      [batch_size, height, width, channels].
-    image_resizer_fn: a function which takes in a single image and outputs
-      a resized image and its original shape.
-
-  Returns:
-    resized_inputs: The inputs resized according to image_resizer_fn.
-    true_image_shapes: A integer tensor of shape [batch_size, 3]
-      representing the height, width and number of channels in inputs.
-  """
-
-  if inputs.dtype is not tf.float32:
-    raise ValueError('`resize_images_and_return_shapes` expects a'
-                     ' tf.float32 tensor')
-
-  # TODO(jonathanhuang): revisit whether to always use batch size as
-  # the number of parallel iterations vs allow for dynamic batching.
-  outputs = static_or_dynamic_map_fn(
-      image_resizer_fn,
-      elems=inputs,
-      dtype=[tf.float32, tf.int32])
-  resized_inputs = outputs[0]
-  true_image_shapes = outputs[1]
-
-  return resized_inputs, true_image_shapes

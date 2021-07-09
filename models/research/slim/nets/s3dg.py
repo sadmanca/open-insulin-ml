@@ -24,19 +24,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
+import tensorflow as tf
 
 from nets import i3d_utils
 
-# pylint: disable=g-long-lambda
-trunc_normal = lambda stddev: tf.truncated_normal_initializer(
-    0.0, stddev)
+trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
 conv3d_spatiotemporal = i3d_utils.conv3d_spatiotemporal
 inception_block_v1_3d = i3d_utils.inception_block_v1_3d
 
-
-arg_scope = slim.arg_scope
+# Orignaly, arg_scope = slim.arg_scope and layers = slim, now switch to more
+# update-to-date tf.contrib.* API.
+arg_scope = tf.contrib.framework.arg_scope
+layers = tf.contrib.layers
 
 
 def s3dg_arg_scope(weight_decay=1e-7,
@@ -69,11 +68,12 @@ def s3dg_arg_scope(weight_decay=1e-7,
       }
   }
 
-  with arg_scope([slim.conv3d, conv3d_spatiotemporal],
-                 weights_regularizer=slim.l2_regularizer(weight_decay),
-                 activation_fn=tf.nn.relu,
-                 normalizer_fn=slim.batch_norm,
-                 normalizer_params=batch_norm_params):
+  with arg_scope(
+      [layers.conv3d, conv3d_spatiotemporal],
+      weights_regularizer=layers.l2_regularizer(weight_decay),
+      activation_fn=tf.nn.relu,
+      normalizer_fn=layers.batch_norm,
+      normalizer_params=batch_norm_params):
     with arg_scope([conv3d_spatiotemporal], separable=True) as sc:
       return sc
 
@@ -111,13 +111,13 @@ def self_gating(input_tensor, scope, data_format='NDHWC'):
   h = input_shape[index_h]
   num_channels = input_shape[index_c]
 
-  spatiotemporal_average = slim.avg_pool3d(
+  spatiotemporal_average = layers.avg_pool3d(
       input_tensor, [t, w, h],
       stride=1,
       data_format=data_format,
       scope=scope + '/self_gating/avg_pool3d')
 
-  weights = slim.conv3d(
+  weights = layers.conv3d(
       spatiotemporal_average,
       num_channels, [1, 1, 1],
       activation_fn=None,
@@ -208,11 +208,12 @@ def s3dg_base(inputs,
   depth = lambda d: max(int(d * depth_multiplier), min_depth)
 
   with tf.variable_scope(scope, 'InceptionV1', [inputs]):
-    with arg_scope([slim.conv3d], weights_initializer=trunc_normal(0.01)):
-      with arg_scope([slim.conv3d, slim.max_pool3d, conv3d_spatiotemporal],
-                     stride=1,
-                     data_format=data_format,
-                     padding='SAME'):
+    with arg_scope([layers.conv3d], weights_initializer=trunc_normal(0.01)):
+      with arg_scope(
+          [layers.conv3d, layers.max_pool3d, conv3d_spatiotemporal],
+          stride=1,
+          data_format=data_format,
+          padding='SAME'):
         # batch_size x 32 x 112 x 112 x 64
         end_point = 'Conv2d_1a_7x7'
         if first_temporal_kernel_size not in [1, 3, 5, 7]:
@@ -230,13 +231,14 @@ def s3dg_base(inputs,
           return net, end_points
         # batch_size x 32 x 56 x 56 x 64
         end_point = 'MaxPool_2a_3x3'
-        net = slim.max_pool3d(net, [1, 3, 3], stride=[1, 2, 2], scope=end_point)
+        net = layers.max_pool3d(
+            net, [1, 3, 3], stride=[1, 2, 2], scope=end_point)
         end_points[end_point] = net
         if final_endpoint == end_point:
           return net, end_points
         # batch_size x 32 x 56 x 56 x 64
         end_point = 'Conv2d_2b_1x1'
-        net = slim.conv3d(net, depth(64), [1, 1, 1], scope=end_point)
+        net = layers.conv3d(net, depth(64), [1, 1, 1], scope=end_point)
         end_points[end_point] = net
         if final_endpoint == end_point:
           return net, end_points
@@ -255,7 +257,8 @@ def s3dg_base(inputs,
           return net, end_points
         # batch_size x 32 x 28 x 28 x 192
         end_point = 'MaxPool_3a_3x3'
-        net = slim.max_pool3d(net, [1, 3, 3], stride=[1, 2, 2], scope=end_point)
+        net = layers.max_pool3d(
+            net, [1, 3, 3], stride=[1, 2, 2], scope=end_point)
         end_points[end_point] = net
         if final_endpoint == end_point:
           return net, end_points
@@ -306,7 +309,8 @@ def s3dg_base(inputs,
           return net, end_points
 
         end_point = 'MaxPool_4a_3x3'
-        net = slim.max_pool3d(net, [3, 3, 3], stride=[2, 2, 2], scope=end_point)
+        net = layers.max_pool3d(
+            net, [3, 3, 3], stride=[2, 2, 2], scope=end_point)
         end_points[end_point] = net
         if final_endpoint == end_point:
           return net, end_points
@@ -427,7 +431,8 @@ def s3dg_base(inputs,
           return net, end_points
 
         end_point = 'MaxPool_5a_2x2'
-        net = slim.max_pool3d(net, [2, 2, 2], stride=[2, 2, 2], scope=end_point)
+        net = layers.max_pool3d(
+            net, [2, 2, 2], stride=[2, 2, 2], scope=end_point)
         end_points[end_point] = net
         if final_endpoint == end_point:
           return net, end_points
@@ -490,7 +495,7 @@ def s3dg(inputs,
          depth_multiplier=1.0,
          dropout_keep_prob=0.8,
          is_training=True,
-         prediction_fn=slim.softmax,
+         prediction_fn=layers.softmax,
          spatial_squeeze=True,
          reuse=None,
          data_format='NDHWC',
@@ -551,7 +556,8 @@ def s3dg(inputs,
   # Final pooling and prediction
   with tf.variable_scope(
       scope, 'InceptionV1', [inputs, num_classes], reuse=reuse) as scope:
-    with arg_scope([slim.batch_norm, slim.dropout], is_training=is_training):
+    with arg_scope(
+        [layers.batch_norm, layers.dropout], is_training=is_training):
       net, end_points = s3dg_base(
           inputs,
           first_temporal_kernel_size=first_temporal_kernel_size,
@@ -564,16 +570,16 @@ def s3dg(inputs,
           scope=scope)
       with tf.variable_scope('Logits'):
         if data_format.startswith('NC'):
-          net = tf.transpose(a=net, perm=[0, 2, 3, 4, 1])
+          net = tf.transpose(net, [0, 2, 3, 4, 1])
         kernel_size = i3d_utils.reduced_kernel_size_3d(net, [2, 7, 7])
-        net = slim.avg_pool3d(
+        net = layers.avg_pool3d(
             net,
             kernel_size,
             stride=1,
             data_format='NDHWC',
             scope='AvgPool_0a_7x7')
-        net = slim.dropout(net, dropout_keep_prob, scope='Dropout_0b')
-        logits = slim.conv3d(
+        net = layers.dropout(net, dropout_keep_prob, scope='Dropout_0b')
+        logits = layers.conv3d(
             net,
             num_classes, [1, 1, 1],
             activation_fn=None,
@@ -581,7 +587,7 @@ def s3dg(inputs,
             data_format='NDHWC',
             scope='Conv2d_0c_1x1')
         # Temporal average pooling.
-        logits = tf.reduce_mean(input_tensor=logits, axis=1)
+        logits = tf.reduce_mean(logits, axis=1)
         if spatial_squeeze:
           logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
 

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,26 +20,15 @@ Barret Zoph, Vijay Vasudevan, Jonathon Shlens, Quoc V. Le
 https://arxiv.org/abs/1707.07012
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from six.moves import range
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
+import tensorflow as tf
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.utils import variables_helper
+from nets.nasnet import nasnet
+from nets.nasnet import nasnet_utils
 
-# pylint: disable=g-import-not-at-top
-try:
-  from nets.nasnet import nasnet
-  from nets.nasnet import nasnet_utils
-except:  # pylint: disable=bare-except
-  pass
-# pylint: enable=g-import-not-at-top
-
-arg_scope = slim.arg_scope
+arg_scope = tf.contrib.framework.arg_scope
+slim = tf.contrib.slim
 
 
 def nasnet_large_arg_scope_for_detection(is_batch_norm_training=False):
@@ -334,3 +322,4 @@ class FasterRCNNNASFeatureExtractor(
         var_name += '/ExponentialMovingAverage'
         variables_to_restore[var_name] = variable
     return variables_to_restore
+

@@ -16,7 +16,7 @@
 """Function to build box predictor from configuration."""
 
 import collections
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from object_detection.predictors import convolutional_box_predictor
 from object_detection.predictors import convolutional_keras_box_predictor
 from object_detection.predictors import mask_rcnn_box_predictor
@@ -245,8 +245,7 @@ def build_weight_shared_convolutional_box_predictor(
     apply_batch_norm=True,
     use_depthwise=False,
     score_converter_fn=tf.identity,
-    box_encodings_clip_range=None,
-    keyword_args=None):
+    box_encodings_clip_range=None):
   """Builds and returns a WeightSharedConvolutionalBoxPredictor class.
 
   Args:
@@ -275,7 +274,6 @@ def build_weight_shared_convolutional_box_predictor(
     score_converter_fn: Callable score converter to perform elementwise op on
       class scores.
     box_encodings_clip_range: Min and max values for clipping the box_encodings.
-    keyword_args: A dictionary with additional args.
 
   Returns:
     A WeightSharedConvolutionalBoxPredictor class.
@@ -329,12 +327,9 @@ def build_weight_shared_convolutional_keras_box_predictor(
     share_prediction_tower=False,
     apply_batch_norm=True,
     use_depthwise=False,
-    apply_conv_hyperparams_to_heads=False,
-    apply_conv_hyperparams_pointwise=False,
     score_converter_fn=tf.identity,
     box_encodings_clip_range=None,
-    name='WeightSharedConvolutionalBoxPredictor',
-    keyword_args=None):
+    name='WeightSharedConvolutionalBoxPredictor'):
   """Builds the Keras WeightSharedConvolutionalBoxPredictor from the arguments.
 
   Args:
@@ -371,20 +366,11 @@ def build_weight_shared_convolutional_keras_box_predictor(
     apply_batch_norm: Whether to apply batch normalization to conv layers in
       this predictor.
     use_depthwise: Whether to use depthwise separable conv2d instead of conv2d.
-    apply_conv_hyperparams_to_heads: Whether to apply conv_hyperparams to
-      depthwise seperable convolution layers in the box and class heads. By
-      default, the conv_hyperparams are only applied to layers in the predictor
-      tower when using depthwise separable convolutions.
-    apply_conv_hyperparams_pointwise: Whether to apply the conv_hyperparams to
-      the pointwise_initializer and pointwise_regularizer when using depthwise
-      separable convolutions. By default, conv_hyperparams are only applied to
-      the depthwise initializer and regularizer when use_depthwise is true.
     score_converter_fn: Callable score converter to perform elementwise op on
       class scores.
     box_encodings_clip_range: Min and max values for clipping the box_encodings.
     name: A string name scope to assign to the box predictor. If `None`, Keras
       will auto-generate one from the class name.
-    keyword_args: A dictionary with additional args.
 
   Returns:
     A Keras WeightSharedConvolutionalBoxPredictor class.
@@ -401,7 +387,6 @@ def build_weight_shared_convolutional_keras_box_predictor(
       conv_hyperparams=conv_hyperparams,
       num_predictions_per_location=num_predictions_per_location,
       use_depthwise=use_depthwise,
-      apply_conv_hyperparams_to_heads=apply_conv_hyperparams_to_heads,
       box_encodings_clip_range=box_encodings_clip_range,
       name='WeightSharedConvolutionalBoxHead')
   class_prediction_head = keras_class_head.WeightSharedConvolutionalClassHead(
@@ -414,7 +399,6 @@ def build_weight_shared_convolutional_keras_box_predictor(
       num_predictions_per_location=num_predictions_per_location,
       class_prediction_bias_init=class_prediction_bias_init,
       use_depthwise=use_depthwise,
-      apply_conv_hyperparams_to_heads=apply_conv_hyperparams_to_heads,
       score_converter_fn=score_converter_fn,
       name='WeightSharedConvolutionalClassHead')
   other_heads = {}
@@ -435,7 +419,6 @@ def build_weight_shared_convolutional_keras_box_predictor(
           apply_batch_norm=apply_batch_norm,
           share_prediction_tower=share_prediction_tower,
           use_depthwise=use_depthwise,
-          apply_conv_hyperparams_pointwise=apply_conv_hyperparams_pointwise,
           name=name))
 
 
@@ -745,8 +728,6 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes,
       box_encodings_clip_range = BoxEncodingsClipRange(
           min=config_box_predictor.box_encodings_clip_range.min,
           max=config_box_predictor.box_encodings_clip_range.max)
-    keyword_args = None
-
     return build_weight_shared_convolutional_box_predictor(
         is_training=is_training,
         num_classes=num_classes,
@@ -765,8 +746,7 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes,
         apply_batch_norm=apply_batch_norm,
         use_depthwise=config_box_predictor.use_depthwise,
         score_converter_fn=score_converter_fn,
-        box_encodings_clip_range=box_encodings_clip_range,
-        keyword_args=keyword_args)
+        box_encodings_clip_range=box_encodings_clip_range)
 
 
   if box_predictor_oneof == 'mask_rcnn_box_predictor':
@@ -911,7 +891,6 @@ def build_keras(hyperparams_fn, freeze_batchnorm, inplace_batchnorm_update,
       box_encodings_clip_range = BoxEncodingsClipRange(
           min=config_box_predictor.box_encodings_clip_range.min,
           max=config_box_predictor.box_encodings_clip_range.max)
-    keyword_args = None
 
     return build_weight_shared_convolutional_keras_box_predictor(
         is_training=is_training,
@@ -933,13 +912,8 @@ def build_keras(hyperparams_fn, freeze_batchnorm, inplace_batchnorm_update,
         share_prediction_tower=config_box_predictor.share_prediction_tower,
         apply_batch_norm=apply_batch_norm,
         use_depthwise=config_box_predictor.use_depthwise,
-        apply_conv_hyperparams_to_heads=(
-            config_box_predictor.apply_conv_hyperparams_to_heads),
-        apply_conv_hyperparams_pointwise=(
-            config_box_predictor.apply_conv_hyperparams_pointwise),
         score_converter_fn=score_converter_fn,
-        box_encodings_clip_range=box_encodings_clip_range,
-        keyword_args=keyword_args)
+        box_encodings_clip_range=box_encodings_clip_range)
 
   if box_predictor_oneof == 'mask_rcnn_box_predictor':
     config_box_predictor = box_predictor_config.mask_rcnn_box_predictor

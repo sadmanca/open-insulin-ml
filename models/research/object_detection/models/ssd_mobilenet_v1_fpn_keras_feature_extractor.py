@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,12 +15,7 @@
 
 """SSD Keras-based MobilenetV1 FPN Feature Extractor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from six.moves import range
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
@@ -55,7 +49,6 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
                additional_layer_depth=256,
                use_explicit_padding=False,
                use_depthwise=False,
-               use_native_resize_op=False,
                override_base_feature_extractor_hyperparams=False,
                name=None):
     """SSD Keras based FPN feature extractor Mobilenet v1 architecture.
@@ -91,8 +84,6 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
       use_depthwise: whether to use depthwise convolutions. Default is False.
-      use_native_resize_op: Whether to use tf.image.nearest_neighbor_resize
-        to do upsampling in FPN. Default is false.
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams`.
@@ -118,12 +109,11 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
     self._conv_defs = None
     if self._use_depthwise:
       self._conv_defs = _create_modified_mobilenet_config()
-    self._use_native_resize_op = use_native_resize_op
     self._feature_blocks = [
         'Conv2d_3_pointwise', 'Conv2d_5_pointwise', 'Conv2d_11_pointwise',
         'Conv2d_13_pointwise'
     ]
-    self.classification_backbone = None
+    self._mobilenet_v1 = None
     self._fpn_features_generator = None
     self._coarse_feature_layers = []
 
@@ -147,7 +137,7 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
         name='conv_pw_11_relu').output
     conv2d_13_pointwise = full_mobilenet_v1.get_layer(
         name='conv_pw_13_relu').output
-    self.classification_backbone = tf.keras.Model(
+    self._mobilenet_v1 = tf.keras.Model(
         inputs=full_mobilenet_v1.inputs,
         outputs=[conv2d_3_pointwise, conv2d_5_pointwise,
                  conv2d_11_pointwise, conv2d_13_pointwise]
@@ -163,7 +153,6 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
             depth=self._depth_fn(self._additional_layer_depth),
             use_depthwise=self._use_depthwise,
             use_explicit_padding=self._use_explicit_padding,
-            use_native_resize_op=self._use_native_resize_op,
             is_training=self._is_training,
             conv_hyperparams=self._conv_hyperparams,
             freeze_batchnorm=self._freeze_batchnorm,
@@ -218,7 +207,7 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
     preprocessed_inputs = shape_utils.check_min_image_dim(
         33, preprocessed_inputs)
 
-    image_features = self.classification_backbone(
+    image_features = self._mobilenet_v1(
         ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple))
 
     feature_block_list = []
@@ -243,14 +232,3 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
         last_feature_map = layer(last_feature_map)
       feature_maps.append(last_feature_map)
     return feature_maps
-
-  def restore_from_classification_checkpoint_fn(self, feature_extractor_scope):
-    """Returns a map for restoring from an (object-based) checkpoint.
-
-    Args:
-      feature_extractor_scope: A scope name for the feature extractor (unused).
-
-    Returns:
-      A dict mapping keys to Keras models
-    """
-    return {'feature_extractor': self.classification_backbone}

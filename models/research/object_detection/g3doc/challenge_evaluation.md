@@ -47,7 +47,7 @@ python object_detection/dataset_tools/oid_hierarchical_labels_expansion.py \
     --annotation_type=2
 ```
 
-1.  If you are not using TensorFlow, you can run evaluation directly using your
+1.  If you are not using Tensorflow, you can run evaluation directly using your
     algorithm's output and generated ground-truth files. {value=4}
 
 After step 3 you produced the ground-truth files suitable for running 'OID
@@ -66,14 +66,11 @@ python models/research/object_detection/metrics/oid_challenge_evaluation.py \
     --output_metrics=${OUTPUT_METRICS} \
 ```
 
-Note that predictions file must contain the following keys:
-ImageID,LabelName,Score,XMin,XMax,YMin,YMax
-
 For the Object Detection Track, the participants will be ranked on:
 
 -   "OpenImagesDetectionChallenge_Precision/mAP@0.5IOU"
 
-To use evaluation within TensorFlow training, use metric name
+To use evaluation within Tensorflow training, use metric name
 `oid_challenge_detection_metrics` in the evaluation config.
 
 ## Instance Segmentation Track
@@ -97,11 +94,10 @@ evaluation metric implementation is available in the class
     masks.
     Those should be transformed into a single CSV file in the format:
 
-    ImageID,LabelName,ImageWidth,ImageHeight,XMin,YMin,XMax,YMax,IsGroupOf,Mask
-    where Mask is MS COCO RLE encoding, compressed with zip, and re-coded with
-    base64 encoding of a binary mask stored in .png file. See an example
-    implementation of the encoding function
-    [here](https://gist.github.com/pculliton/209398a2a52867580c6103e25e55d93c).
+    ImageID,LabelName,ImageWidth,ImageHeight,XMin,YMin,XMax,YMax,GroupOf,Mask
+    where Mask is MS COCO RLE encoding of a binary mask stored in .png file.
+
+    NOTE: the util to make the transformation will be released soon.
 
 1.  Run the following command to create hierarchical expansion of the instance
     segmentation, bounding boxes and image-level label annotations: {value=4}
@@ -130,7 +126,7 @@ python object_detection/dataset_tools/oid_hierarchical_labels_expansion.py \
     --annotation_type=1
 ```
 
-1.  If you are not using TensorFlow, you can run evaluation directly using your
+1.  If you are not using Tensorflow, you can run evaluation directly using your
     algorithm's output and generated ground-truth files. {value=4}
 
 ```
@@ -145,11 +141,6 @@ python models/research/object_detection/metrics/oid_challenge_evaluation.py \
     --input_annotations_segm=${INSTANCE_SEGMENTATIONS}_expanded.csv
     --output_metrics=${OUTPUT_METRICS} \
 ```
-
-Note that predictions file must contain the following keys:
-ImageID,ImageWidth,ImageHeight,LabelName,Score,Mask
-
-Mask must be encoded the same way as groundtruth masks.
 
 For the Instance Segmentation Track, the participants will be ranked on:
 
@@ -204,9 +195,6 @@ python object_detection/metrics/oid_vrd_challenge_evaluation.py \
     --input_relationship_labelmap=${INPUT_RELATIONSHIP_LABELMAP} \
     --output_metrics=${OUTPUT_METRICS}
 ```
-
-Note that predictions file must contain the following keys:
-ImageID,LabelName1,LabelName2,RelationshipLabel,Score,XMin1,XMax1,YMin1,YMax1,XMin2,XMax2,YMin2,YMax2
 
 The participants of the challenge will be evaluated by weighted average of the following three metrics:
 

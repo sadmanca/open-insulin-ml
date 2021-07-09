@@ -20,7 +20,7 @@ Generates grid anchors on the fly as described in:
 Shaoqing Ren, Kaiming He, Ross Girshick, and Jian Sun.
 """
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from object_detection.core import anchor_generator
 from object_detection.core import box_list

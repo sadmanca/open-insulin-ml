@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import csv
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 
 def load_categories_from_csv_file(csv_path):

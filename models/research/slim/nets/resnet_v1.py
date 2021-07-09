@@ -34,7 +34,7 @@ units.
 
 Typical use:
 
-   from tf_slim.nets import resnet_v1
+   from tensorflow.contrib.slim.nets import resnet_v1
 
 ResNet-101 for image classification into 1000 classes:
 
@@ -56,13 +56,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
+import tensorflow as tf
 
 from nets import resnet_utils
 
 
 resnet_arg_scope = resnet_utils.resnet_arg_scope
+slim = tf.contrib.slim
 
 
 class NoOpScope(object):
@@ -218,8 +218,7 @@ def resnet_v1(inputs,
   Raises:
     ValueError: If the target output_stride is not valid.
   """
-  with tf.variable_scope(
-      scope, 'resnet_v1', [inputs], reuse=reuse) as sc:
+  with tf.variable_scope(scope, 'resnet_v1', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     with slim.arg_scope([slim.conv2d, bottleneck,
                          resnet_utils.stack_blocks_dense],
@@ -242,8 +241,7 @@ def resnet_v1(inputs,
 
         if global_pool:
           # Global average pooling.
-          net = tf.reduce_mean(
-              input_tensor=net, axis=[1, 2], name='pool5', keepdims=True)
+          net = tf.reduce_mean(net, [1, 2], name='pool5', keep_dims=True)
           end_points['global_pool'] = net
         if num_classes:
           net = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,

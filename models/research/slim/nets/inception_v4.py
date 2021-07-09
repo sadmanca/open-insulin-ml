@@ -24,10 +24,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
+import tensorflow as tf
 
 from nets import inception_utils
+
+slim = tf.contrib.slim
 
 
 def block_inception_a(inputs, scope=None, reuse=None):
@@ -35,8 +36,7 @@ def block_inception_a(inputs, scope=None, reuse=None):
   # By default use stride=1 and SAME padding
   with slim.arg_scope([slim.conv2d, slim.avg_pool2d, slim.max_pool2d],
                       stride=1, padding='SAME'):
-    with tf.variable_scope(
-        scope, 'BlockInceptionA', [inputs], reuse=reuse):
+    with tf.variable_scope(scope, 'BlockInceptionA', [inputs], reuse=reuse):
       with tf.variable_scope('Branch_0'):
         branch_0 = slim.conv2d(inputs, 96, [1, 1], scope='Conv2d_0a_1x1')
       with tf.variable_scope('Branch_1'):
@@ -57,8 +57,7 @@ def block_reduction_a(inputs, scope=None, reuse=None):
   # By default use stride=1 and SAME padding
   with slim.arg_scope([slim.conv2d, slim.avg_pool2d, slim.max_pool2d],
                       stride=1, padding='SAME'):
-    with tf.variable_scope(
-        scope, 'BlockReductionA', [inputs], reuse=reuse):
+    with tf.variable_scope(scope, 'BlockReductionA', [inputs], reuse=reuse):
       with tf.variable_scope('Branch_0'):
         branch_0 = slim.conv2d(inputs, 384, [3, 3], stride=2, padding='VALID',
                                scope='Conv2d_1a_3x3')
@@ -78,8 +77,7 @@ def block_inception_b(inputs, scope=None, reuse=None):
   # By default use stride=1 and SAME padding
   with slim.arg_scope([slim.conv2d, slim.avg_pool2d, slim.max_pool2d],
                       stride=1, padding='SAME'):
-    with tf.variable_scope(
-        scope, 'BlockInceptionB', [inputs], reuse=reuse):
+    with tf.variable_scope(scope, 'BlockInceptionB', [inputs], reuse=reuse):
       with tf.variable_scope('Branch_0'):
         branch_0 = slim.conv2d(inputs, 384, [1, 1], scope='Conv2d_0a_1x1')
       with tf.variable_scope('Branch_1'):
@@ -103,8 +101,7 @@ def block_reduction_b(inputs, scope=None, reuse=None):
   # By default use stride=1 and SAME padding
   with slim.arg_scope([slim.conv2d, slim.avg_pool2d, slim.max_pool2d],
                       stride=1, padding='SAME'):
-    with tf.variable_scope(
-        scope, 'BlockReductionB', [inputs], reuse=reuse):
+    with tf.variable_scope(scope, 'BlockReductionB', [inputs], reuse=reuse):
       with tf.variable_scope('Branch_0'):
         branch_0 = slim.conv2d(inputs, 192, [1, 1], scope='Conv2d_0a_1x1')
         branch_0 = slim.conv2d(branch_0, 192, [3, 3], stride=2,
@@ -126,8 +123,7 @@ def block_inception_c(inputs, scope=None, reuse=None):
   # By default use stride=1 and SAME padding
   with slim.arg_scope([slim.conv2d, slim.avg_pool2d, slim.max_pool2d],
                       stride=1, padding='SAME'):
-    with tf.variable_scope(
-        scope, 'BlockInceptionC', [inputs], reuse=reuse):
+    with tf.variable_scope(scope, 'BlockInceptionC', [inputs], reuse=reuse):
       with tf.variable_scope('Branch_0'):
         branch_0 = slim.conv2d(inputs, 256, [1, 1], scope='Conv2d_0a_1x1')
       with tf.variable_scope('Branch_1'):
@@ -284,8 +280,7 @@ def inception_v4(inputs, num_classes=1001, is_training=True,
     end_points: the set of end_points from the inception model.
   """
   end_points = {}
-  with tf.variable_scope(
-      scope, 'InceptionV4', [inputs], reuse=reuse) as scope:
+  with tf.variable_scope(scope, 'InceptionV4', [inputs], reuse=reuse) as scope:
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                         is_training=is_training):
       net, end_points = inception_v4_base(inputs, scope=scope)
@@ -321,11 +316,8 @@ def inception_v4(inputs, num_classes=1001, is_training=True,
             net = slim.avg_pool2d(net, kernel_size, padding='VALID',
                                   scope='AvgPool_1a')
           else:
-            net = tf.reduce_mean(
-                input_tensor=net,
-                axis=[1, 2],
-                keepdims=True,
-                name='global_pool')
+            net = tf.reduce_mean(net, [1, 2], keep_dims=True,
+                                 name='global_pool')
           end_points['global_pool'] = net
           if not num_classes:
             return net, end_points

@@ -15,7 +15,7 @@
 
 """Tensorflow ops to calibrate class predictions and background class."""
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from object_detection.utils import shape_utils
 
 
@@ -211,35 +211,6 @@ def build(calibration_config):
           combined_calibrated_tensor,
           shape=input_shape,
           name='calibrate_scores')
-      return calibrated_class_predictions_with_background
-
-  elif (calibration_config.WhichOneof('calibrator') ==
-        'temperature_scaling_calibration'):
-
-    def calibration_fn(class_predictions_with_background):
-      """Calibrate predictions via temperature scaling.
-
-      Predictions logits scores are scaled by the temperature scaler. Note that
-      the 0-indexed background class is also transformed.
-
-      Args:
-        class_predictions_with_background: tf.float32 tensor of shape
-          [batch_size, num_anchors, num_classes + 1] containing logits scores.
-          This is usually produced before a sigmoid or softmax layer.
-
-      Returns:
-        tf.float32 tensor of the same shape as the input.
-
-      Raises:
-        ValueError: If temperature scaler is of incorrect value.
-      """
-      scaler = calibration_config.temperature_scaling_calibration.scaler
-      if scaler <= 0:
-        raise ValueError('The scaler in temperature scaling must be positive.')
-      calibrated_class_predictions_with_background = tf.math.divide(
-          class_predictions_with_background,
-          scaler,
-          name='calibrate_score')
       return calibrated_class_predictions_with_background
 
   # TODO(zbeaver): Add sigmoid calibration.

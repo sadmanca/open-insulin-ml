@@ -37,7 +37,8 @@ from abc import ABCMeta
 from abc import abstractmethod
 
 import six
-import tensorflow.compat.v1 as tf
+from six.moves import zip
+import tensorflow as tf
 
 
 class AnchorGenerator(six.with_metaclass(ABCMeta, object)):
@@ -106,9 +107,11 @@ class AnchorGenerator(six.with_metaclass(ABCMeta, object)):
     with tf.name_scope(self.name_scope()):
       anchors_list = self._generate(feature_map_shape_list, **params)
       if self.check_num_anchors:
-        for item in anchors_list:
-          item.set(tf.identity(item.get()))
-
+        with tf.control_dependencies([
+            self._assert_correct_number_of_anchors(
+                anchors_list, feature_map_shape_list)]):
+          for item in anchors_list:
+            item.set(tf.identity(item.get()))
       return anchors_list
 
   @abstractmethod
@@ -127,19 +130,25 @@ class AnchorGenerator(six.with_metaclass(ABCMeta, object)):
     """
     pass
 
-  def anchor_index_to_feature_map_index(self, boxlist_list):
-    """Returns a 1-D array of feature map indices for each anchor.
+  def _assert_correct_number_of_anchors(self, anchors_list,
+                                        feature_map_shape_list):
+    """Assert that correct number of anchors was generated.
 
     Args:
-      boxlist_list: a list of Boxlist, each holding a collection of N anchor
-        boxes. This list is produced in self.generate().
-
+      anchors_list: A list of box_list.BoxList object holding anchors generated.
+      feature_map_shape_list: list of (height, width) pairs in the format
+        [(height_0, width_0), (height_1, width_1), ...] that the generated
+        anchors must align with.
     Returns:
-      A [num_anchors] integer array, where each element indicates which feature
-      map index the anchor belongs to.
+      Op that raises InvalidArgumentError if the number of anchors does not
+        match the number of expected anchors.
     """
-    feature_map_indices_list = []
-    for i, boxes in enumerate(boxlist_list):
-      feature_map_indices_list.append(
-          i * tf.ones([boxes.num_boxes()], dtype=tf.int32))
-    return tf.concat(feature_map_indices_list, axis=0)
+    expected_num_anchors = 0
+    actual_num_anchors = 0
+    for num_anchors_per_location, feature_map_shape, anchors in zip(
+        self.num_anchors_per_location(), feature_map_shape_list, anchors_list):
+      expected_num_anchors += (num_anchors_per_location
+                               * feature_map_shape[0]
+                               * feature_map_shape[1])
+      actual_num_anchors += anchors.num_boxes()
+    return tf.assert_equal(expected_num_anchors, actual_num_anchors)

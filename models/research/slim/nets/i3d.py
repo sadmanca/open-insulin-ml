@@ -24,15 +24,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
+import tensorflow as tf
 
 from nets import i3d_utils
 from nets import s3dg
 
-# pylint: disable=g-long-lambda
-trunc_normal = lambda stddev: tf.truncated_normal_initializer(
-    0.0, stddev)
+slim = tf.contrib.slim
+trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
 conv3d_spatiotemporal = i3d_utils.conv3d_spatiotemporal
 
 
@@ -167,7 +165,7 @@ def i3d(inputs,
             normalizer_fn=None,
             scope='Conv2d_0c_1x1')
         # Temporal average pooling.
-        logits = tf.reduce_mean(input_tensor=logits, axis=1)
+        logits = tf.reduce_mean(logits, axis=1)
         if spatial_squeeze:
           logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
 

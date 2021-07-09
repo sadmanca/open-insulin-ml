@@ -18,12 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import copy
-from six.moves import range
-import tensorflow.compat.v1 as tf
-import tf_slim as slim
+import tensorflow as tf
 from nets.mobilenet import conv_blocks as ops
 from nets.mobilenet import mobilenet
 from nets.mobilenet import mobilenet_v2
+
+
+slim = tf.contrib.slim
 
 
 def find_ops(optype):
@@ -40,11 +41,13 @@ def find_ops(optype):
 
 class MobilenetV2Test(tf.test.TestCase):
 
+  def setUp(self):
+    tf.reset_default_graph()
+
   def testCreation(self):
     spec = dict(mobilenet_v2.V2_DEF)
     _, ep = mobilenet.mobilenet(
-        tf.placeholder(tf.float32, (10, 224, 224, 16)),
-        conv_defs=spec)
+        tf.placeholder(tf.float32, (10, 224, 224, 16)), conv_defs=spec)
     num_convs = len(find_ops('Conv2D'))
 
     # This is mostly a sanity test. No deep reason for these particular
@@ -60,8 +63,7 @@ class MobilenetV2Test(tf.test.TestCase):
   def testCreationNoClasses(self):
     spec = copy.deepcopy(mobilenet_v2.V2_DEF)
     net, ep = mobilenet.mobilenet(
-        tf.placeholder(tf.float32, (10, 224, 224, 16)),
-        conv_defs=spec,
+        tf.placeholder(tf.float32, (10, 224, 224, 16)), conv_defs=spec,
         num_classes=None)
     self.assertIs(net, ep['global_pool'])
 
@@ -81,8 +83,7 @@ class MobilenetV2Test(tf.test.TestCase):
         (ops.expanded_conv,): dict(split_expansion=2),
     }
     _, _ = mobilenet.mobilenet(
-        tf.placeholder(tf.float32, (10, 224, 224, 16)),
-        conv_defs=spec)
+        tf.placeholder(tf.float32, (10, 224, 224, 16)), conv_defs=spec)
     num_convs = len(find_ops('Conv2D'))
     # All but 3 op has 3 conv operatore, the remainign 3 have one
     # and there is one unaccounted.
@@ -115,8 +116,7 @@ class MobilenetV2Test(tf.test.TestCase):
     with slim.arg_scope((mobilenet.depth_multiplier,), min_depth=32):
       mobilenet_v2.mobilenet(
           tf.placeholder(tf.float32, (10, 224, 224, 2)),
-          conv_defs=mobilenet_v2.V2_DEF,
-          depth_multiplier=0.1)
+          conv_defs=mobilenet_v2.V2_DEF, depth_multiplier=0.1)
       s = [op.outputs[0].get_shape().as_list()[-1] for op in find_ops('Conv2D')]
       s = set(s)
       self.assertSameElements(s, [32, 192, 128, 1001])
@@ -128,8 +128,7 @@ class MobilenetV2Test(tf.test.TestCase):
 
     mobilenet_v2.mobilenet(
         tf.placeholder(tf.float32, (10, 224, 224, 2)),
-        conv_defs=mobilenet_v2.V2_DEF,
-        depth_multiplier=0.01,
+        conv_defs=mobilenet_v2.V2_DEF, depth_multiplier=0.01,
         finegrain_classification_mode=True)
     s = [op.outputs[0].get_shape().as_list()[-1] for op in find_ops('Conv2D')]
     s = set(s)
@@ -142,8 +141,7 @@ class MobilenetV2Test(tf.test.TestCase):
     with slim.arg_scope((mobilenet.depth_multiplier,), min_depth=32):
       net, _ = mobilenet_v2.mobilenet_base(
           tf.placeholder(tf.float32, (10, 224, 224, 16)),
-          conv_defs=mobilenet_v2.V2_DEF,
-          depth_multiplier=0.1)
+          conv_defs=mobilenet_v2.V2_DEF, depth_multiplier=0.1)
       self.assertEqual(net.get_shape().as_list(), [10, 7, 7, 128])
 
   def testWithOutputStride16(self):
@@ -159,8 +157,7 @@ class MobilenetV2Test(tf.test.TestCase):
     new_def = copy.deepcopy(mobilenet_v2.V2_DEF)
 
     def inverse_multiplier(output_params, multiplier):
-      output_params['num_outputs'] = int(
-          output_params['num_outputs'] / multiplier)
+      output_params['num_outputs'] /= multiplier
 
     new_def['spec'][0] = op(
         slim.conv2d,
@@ -169,8 +166,7 @@ class MobilenetV2Test(tf.test.TestCase):
         num_outputs=16)
     _ = mobilenet_v2.mobilenet_base(
         tf.placeholder(tf.float32, (10, 224, 224, 16)),
-        conv_defs=new_def,
-        depth_multiplier=0.1)
+        conv_defs=new_def, depth_multiplier=0.1)
     s = [op.outputs[0].get_shape().as_list()[-1] for op in find_ops('Conv2D')]
     # Expect first layer to be 160 (16 / 0.1), and other layers
     # their max(original size * 0.1, 8)

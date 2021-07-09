@@ -35,7 +35,7 @@ from abc import abstractmethod
 from abc import abstractproperty
 
 import six
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from object_detection.utils import shape_utils
 

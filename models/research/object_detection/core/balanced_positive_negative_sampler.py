@@ -30,9 +30,10 @@ It also ensures the length of output of the subsample is always batch_size, even
 when number of examples set to True in indicator is less than batch_size.
 """
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from object_detection.core import minibatch_sampler
+from object_detection.utils import ops
 
 
 class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
@@ -157,17 +158,19 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
     # Shuffle indicator and label. Need to store the permutation to restore the
     # order post sampling.
     permutation = tf.random_shuffle(tf.range(input_length))
-    indicator = tf.gather(indicator, permutation, axis=0)
-    labels = tf.gather(labels, permutation, axis=0)
+    indicator = ops.matmul_gather_on_zeroth_axis(
+        tf.cast(indicator, tf.float32), permutation)
+    labels = ops.matmul_gather_on_zeroth_axis(
+        tf.cast(labels, tf.float32), permutation)
 
     # index (starting from 1) when indicator is True, 0 when False
     indicator_idx = tf.where(
-        indicator, tf.range(1, input_length + 1),
+        tf.cast(indicator, tf.bool), tf.range(1, input_length + 1),
         tf.zeros(input_length, tf.int32))
 
     # Replace -1 for negative, +1 for positive labels
     signed_label = tf.where(
-        labels, tf.ones(input_length, tf.int32),
+        tf.cast(labels, tf.bool), tf.ones(input_length, tf.int32),
         tf.scalar_mul(-1, tf.ones(input_length, tf.int32)))
     # negative of index for negative label, positive index for positive label,
     # 0 when indicator is False.
@@ -195,10 +198,11 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
         axis=0), tf.bool)
 
     # project back the order based on stored permutations
-    idx_indicator = tf.scatter_nd(
-        tf.expand_dims(permutation, -1), sampled_idx_indicator,
-        shape=(input_length,))
-    return idx_indicator
+    reprojections = tf.one_hot(permutation, depth=input_length,
+                               dtype=tf.float32)
+    return tf.cast(tf.tensordot(
+        tf.cast(sampled_idx_indicator, tf.float32),
+        reprojections, axes=[0, 0]), tf.bool)
 
   def subsample(self, indicator, batch_size, labels, scope=None):
     """Returns subsampled minibatch.

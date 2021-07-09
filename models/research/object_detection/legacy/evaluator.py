@@ -19,7 +19,7 @@ DetectionModel.
 """
 
 import logging
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from object_detection import eval_util
 from object_detection.core import prefetcher
